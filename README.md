@@ -18,7 +18,7 @@
 1.  **Клонировать репозиторий:**
     ```bash
     git clone https://github.com/1IT-Programmer/BotTaxi.git
-    cd intercity_travel_bot
+    cd BotTaxi
     ```
     Или скачайте и распакуйте архив с кодом.
 
