@@ -1,0 +1,271 @@
+Концепция:
+Бот будет служить платформой для связи пассажиров и водителей, осуществляющих междугородние поездки. Администратор будет контролировать систему и оказывать поддержку.
+
+Основные роли:
+
+Администратор: Управляет водителями, получает сообщения поддержки.
+
+Водитель: Регистрируется, создает поездки, управляет ими.
+
+Пассажир: Регистрируется, ищет поездки, бронирует места.
+
+Незарегистрированный пользователь: Может начать диалог с ботом и зарегистрироваться.
+
+1. Структура Проекта (Файловая система)
+intercity_travel_bot/
+│
+├── venv/                  # Виртуальное окружение Python
+│
+├── src/                   # Основной исходный код бота
+│   │
+│   ├── bot.py             # Главный файл запуска бота, инициализация
+│   ├── config.py          # Конфигурация (токен бота, ID админа, настройки БД)
+│   ├── requirements.txt   # Список зависимостей Python
+│   │
+│   ├── database/          # Модуль для работы с базой данных
+│   │   ├── __init__.py
+│   │   ├── models.py      # Определения моделей SQLAlchemy (User, DriverProfile, Trip, Booking)
+│   │   ├── database.py    # Настройка подключения к БД, сессии
+│   │   └── crud.py        # Функции для операций с БД (Create, Read, Update, Delete)
+│   │
+│   ├── handlers/          # Обработчики сообщений и колбэков Telegram
+│   │   ├── __init__.py
+│   │   ├── common.py      # Общие обработчики (start, help, registration)
+│   │   ├── admin.py       # Обработчики для команд администратора
+│   │   ├── driver.py      # Обработчики для команд водителя
+│   │   ├── passenger.py   # Обработчики для команд пассажира
+│   │   └── support.py     # Обработчики для системы поддержки
+│   │
+│   ├── keyboards/         # Модуль для создания клавиатур Telegram
+│   │   ├── __init__.py
+│   │   ├── inline.py      # Функции для создания Inline-клавиатур
+│   │   └── reply.py       # Функции для создания Reply-клавиатур
+│   │
+│   └── utils/             # Вспомогательные утилиты
+│       ├── __init__.py
+│       └── helpers.py     # Дополнительные функции (валидация данных, форматирование и т.д.)
+│
+├── .env.example           # Пример файла для переменных окружения (токен, ID админа)
+├── .gitignore             # Файл для Git, исключающий ненужные файлы (venv, __pycache__, .env)
+└── README.md              # Описание проекта, инструкция по установке и запуску
+Use code with caution.
+2. Описание Ключевых Файлов и Модулей
+src/bot.py:
+
+Импортирует необходимые библиотеки (python-telegram-bot, sqlalchemy).
+
+Загружает конфигурацию (config.py).
+
+Инициализирует подключение к БД (database/database.py).
+
+Создает экземпляр Application (или Updater в старых версиях PTB).
+
+Регистрирует все обработчики из папки handlers/.
+
+Запускает бота (application.run_polling()).
+
+src/config.py:
+
+Читает переменные окружения (из .env файла или системных переменных).
+
+Содержит константы: BOT_TOKEN, ADMIN_IDS (список ID администраторов), DATABASE_URL (строка подключения к БД, например sqlite:///./travel_bot.db).
+
+Важно: Не храните токен и другие секреты прямо в коде. Используйте переменные окружения (python-dotenv библиотека).
+
+src/requirements.txt:
+
+python-telegram-bot[ext] (или просто python-telegram-bot если используете старую версию)
+
+SQLAlchemy
+
+python-dotenv
+
+psycopg2-binary (если используете PostgreSQL) или другие драйверы БД.
+
+src/database/models.py:
+
+Определяет классы, соответствующие таблицам в БД:
+
+User: id (PK), telegram_id (unique), full_name, phone_number, role ('passenger', 'driver', 'admin'), is_blocked (boolean).
+
+DriverProfile: id (PK), user_id (FK to User, unique), car_make, car_model, car_color, car_plate.
+
+Trip: id (PK), driver_id (FK to User), departure_city, arrival_city, departure_datetime, estimated_arrival_datetime, total_seats, available_seats, status ('scheduled', 'active', 'completed', 'cancelled').
+
+Booking: id (PK), passenger_id (FK to User), trip_id (FK to Trip), seats_booked, status ('confirmed', 'cancelled').
+
+Использует SQLAlchemy ORM.
+
+src/database/database.py:
+
+Создает engine SQLAlchemy на основе DATABASE_URL.
+
+Создает sessionmaker для управления сессиями БД.
+
+Функция для создания таблиц (Base.metadata.create_all(bind=engine)).
+
+Функция-генератор (get_db) для получения сессии БД в обработчиках (контекстный менеджер).
+
+src/database/crud.py:
+
+Функции для взаимодействия с БД:
+
+get_user(db, telegram_id)
+
+create_user(db, user_data)
+
+update_user_role(db, telegram_id, role)
+
+get_driver_profile(db, user_id)
+
+create_driver_profile(db, driver_data)
+
+create_trip(db, trip_data)
+
+get_trip(db, trip_id)
+
+find_trips(db, criteria)
+
+update_trip_seats(db, trip_id, change)
+
+create_booking(db, booking_data)
+
+get_user_bookings(db, user_id)
+
+get_driver_trips(db, driver_id)
+
+block_user(db, telegram_id, block_status)
+
+get_all_drivers(db)
+
+И т.д.
+
+src/handlers/common.py:
+
+start_handler: Приветствие, проверка регистрации. Если не зарегистрирован, запускает процесс регистрации (ConversationHandler).
+
+registration_handler: Пошаговый сбор данных (ФИО, номер телефона - запрашивать контакт). Сохранение пользователя (crud.create_user).
+
+help_handler: Показывает доступные команды.
+
+cancel_handler: Для отмены текущего диалога (ConversationHandler.END).
+
+src/handlers/admin.py:
+
+Команды доступны только пользователям с telegram_id из config.ADMIN_IDS.
+
+/admin: Показать админ-панель (клавиатура с командами).
+
+/add_driver: Запустить процесс добавления водителя (запросить ID пользователя, проверить его наличие, обновить роль crud.update_user_role).
+
+/list_drivers: Показать список водителей (crud.get_all_drivers).
+
+/block_driver: Заблокировать водителя (crud.block_user).
+
+/unblock_driver: Разблокировать водителя.
+
+Обработчик для пересылаемых сообщений поддержки (см. support.py).
+
+src/handlers/driver.py:
+
+Команды доступны пользователям с ролью driver.
+
+/driver: Показать панель водителя.
+
+/register_driver: Если у пользователя роль passenger, но нет профиля водителя, запустить ConversationHandler для сбора данных об авто (crud.create_driver_profile). Обновить роль на driver.
+
+/create_trip: Запустить ConversationHandler для создания поездки (откуда, куда, дата/время отправления, примерное время прибытия, кол-во мест). Сохранить (crud.create_trip).
+
+/my_trips: Показать список активных/запланированных поездок водителя (crud.get_driver_trips). Возможность отменить поездку.
+
+/go_online: (Возможно, это синоним /create_trip или отдельная функция для отметки "готов ехать сейчас по маршруту X").
+
+src/handlers/passenger.py:
+
+Команды доступны всем зарегистрированным пользователям.
+
+/passenger: Показать панель пассажира.
+
+/find_trip: Запустить ConversationHandler для поиска поездки (откуда, куда, дата).
+
+Показ результатов поиска: Вывести список подходящих поездок (crud.find_trips) с кнопками "Забронировать".
+
+callback_query_handler для обработки нажатия кнопки "Забронировать": Проверить наличие мест, создать бронь (crud.create_booking), обновить кол-во мест в поездке (crud.update_trip_seats), отправить подтверждение пассажиру и уведомление водителю.
+
+/my_bookings: Показать список забронированных поездок (crud.get_user_bookings). Возможность отменить бронь.
+
+src/handlers/support.py:
+
+/support: Команда для начала диалога поддержки. Бот отвечает "Напишите ваше сообщение, и оно будет передано администратору." и устанавливает флаг/состояние ожидания сообщения поддержки.
+
+MessageHandler (без команды), который срабатывает, если установлен флаг/состояние поддержки:
+
+Берет текст сообщения пользователя.
+
+Форматирует его, добавляя информацию об отправителе (ФИО, ID, username).
+
+Отправляет это форматированное сообщение всем администраторам из config.ADMIN_IDS.
+
+Сбрасывает флаг/состояние ожидания поддержки.
+
+Отправляет пользователю подтверждение "Ваше сообщение передано администратору."
+
+src/keyboards/*.py:
+
+Функции, генерирующие объекты InlineKeyboardMarkup и ReplyKeyboardMarkup для навигации, выбора опций, подтверждений.
+
+src/utils/helpers.py:
+
+Функции для валидации ввода (например, формат даты/времени, номер телефона).
+
+Функции форматирования вывода (например, красивое отображение информации о поездке).
+
+3. База Данных (Пример с SQLAlchemy)
+Используйте SQLAlchemy для определения моделей (models.py) и взаимодействия с БД (crud.py, database.py).
+
+Для простоты разработки можно начать с SQLite. Для продакшена рекомендуется PostgreSQL из-за лучшей поддержки конкурентных запросов.
+
+Связи между таблицами:
+
+User (1) <-> (1) DriverProfile (если пользователь - водитель)
+
+User (Driver) (1) <-> (*) Trip
+
+User (Passenger) (1) <-> (*) Booking
+
+Trip (1) <-> (*) Booking
+
+4. Логика Работы (Основные Сценарии)
+Регистрация:
+
+/start -> Бот проверяет telegram_id в БД.
+
+Если нет -> Запрос контакта (номер тел.) -> Запрос ФИО -> Сохранение в User с ролью passenger.
+
+Если есть -> Приветствие согласно роли.
+
+Регистрация Водителя:
+
+Пассажир -> /register_driver -> ConversationHandler: Марка -> Модель -> Цвет -> Номер -> Сохранение в DriverProfile, смена роли User на driver.
+
+Создание Поездки:
+
+Водитель -> /create_trip -> ConversationHandler: Откуда -> Куда -> Дата/Время отпр. -> Время приб. -> Места -> Сохранение в Trip.
+
+Поиск и Бронирование:
+
+Пассажир -> /find_trip -> ConversationHandler: Откуда -> Куда -> Дата -> Поиск в Trip (crud.find_trips).
+
+Вывод списка поездок с InlineKeyboardButton("Забронировать", callback_data=f"book_{trip.id}").
+
+Нажатие кнопки -> callback_query_handler: Проверка мест -> crud.create_booking, crud.update_trip_seats -> Уведомления.
+
+Поддержка:
+
+Любой зарег. пользователь -> /support -> Ввод сообщения -> MessageHandler -> Пересылка админам (bot.send_message(admin_id, ...)).
+
+Администрирование:
+
+Админ -> /add_driver -> Ввод telegram_id -> crud.update_user_role.
+
+Админ -> /block_driver -> Ввод telegram_id -> crud.block_user.
