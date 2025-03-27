@@ -1,0 +1,7 @@
+python -m venv venv
+# Linux / macOS
+source venv/bin/activate
+# Windows (cmd.exe)
+venv\Scripts\activate.bat
+# Windows (PowerShell)
+venv\Scripts\Activate.ps1
