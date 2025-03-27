@@ -1,0 +1,8 @@
+python-telegram-bot[ext]>=20.0
+SQLAlchemy>=1.4
+python-dotenv>=0.19
+# Если используете PostgreSQL, добавьте:
+# psycopg2-binary
+# Если используете асинхронный SQLAlchemy с asyncio:
+# asyncpg # для PostgreSQL
+# aiosqlite # для SQLite
