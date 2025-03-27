@@ -1,0 +1,38 @@
+## Структура Проекта
+
+
+intercity_travel_bot/
+│
+├── venv/ # Виртуальное окружение Python
+│
+├── src/ # Основной исходный код бота
+│ ├── bot.py # Главный файл запуска
+│ ├── config.py # Конфигурация (токен, админы, БД)
+│ ├── requirements.txt # Зависимости Python
+│ │
+│ ├── database/ # Модуль для работы с БД (SQLAlchemy)
+│ │ ├── init.py
+│ │ ├── models.py # Модели таблиц
+│ │ ├── database.py # Настройка подключения, сессии
+│ │ └── crud.py # Функции CRUD
+│ │
+│ ├── handlers/ # Обработчики Telegram (команды, сообщения, колбэки)
+│ │ ├── init.py
+│ │ ├── common.py # Общие (start, help, регистрация, cancel)
+│ │ ├── admin.py # Админские команды
+│ │ ├── driver.py # Команды водителя
+│ │ ├── passenger.py # Команды пассажира
+│ │ └── support.py # Система поддержки
+│ │
+│ ├── keyboards/ # Генерация клавиатур Telegram
+│ │ ├── init.py
+│ │ ├── inline.py # Inline-клавиатуры
+│ │ └── reply.py # Reply-клавиатуры
+│ │
+│ └── utils/ # Вспомогательные утилиты
+│ ├── init.py
+│ └── helpers.py # Форматирование, парсинг и т.д.
+│
+├── .env.example # Пример файла переменных окружения
+├── .gitignore # Игнорируемые файлы Git
+└── README.md # Этот файл
